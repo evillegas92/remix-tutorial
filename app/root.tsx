@@ -9,9 +9,15 @@ import {
   ScrollRestoration,
   useLoaderData,
 } from "@remix-run/react";
-import { json, redirect, type LinksFunction } from "@remix-run/node";
+import {
+  json,
+  redirect,
+  type LinksFunction,
+  LoaderFunctionArgs,
+} from "@remix-run/node";
 import appStylesHref from "./app.css";
 import { createEmptyContact, getContacts } from "./data";
+import { useEffect } from "react";
 
 // Every route can export a links function. They will be collected and rendered into the <Links /> component we rendered in app/root.tsx.
 export const links: LinksFunction = () => [
@@ -21,9 +27,11 @@ export const links: LinksFunction = () => [
   },
 ];
 
-export const loader = async () => {
-  const contacts = await getContacts();
-  return json({ contacts });
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const url = new URL(request.url);
+  const searchText = url.searchParams.get("q");
+  const contacts = await getContacts(searchText);
+  return json({ contacts, searchText });
 };
 
 export const action = async () => {
@@ -32,7 +40,14 @@ export const action = async () => {
 };
 
 export default function App() {
-  const { contacts } = useLoaderData<typeof loader>();
+  const { contacts, searchText } = useLoaderData<typeof loader>();
+
+  useEffect(() => {
+    const searchField = document.getElementById("q");
+    if (searchField instanceof HTMLInputElement) {
+      searchField.value = searchText || "";
+    }
+  }, [searchText]);
 
   return (
     <html lang="en">
@@ -50,6 +65,7 @@ export default function App() {
               <input
                 id="q"
                 aria-label="Search contacts"
+                defaultValue={searchText || ""}
                 placeholder="Search"
                 type="search"
                 name="q"
